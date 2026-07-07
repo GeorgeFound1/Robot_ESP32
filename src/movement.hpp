@@ -1,8 +1,20 @@
 #ifndef MOVEMENT_HPP
 #define MOVEMENT_HPP
 
-void setMotors(int leftSpeed, int rightSpeed);
-void goStraight(const int distance);
-void letTurn(const int angle);
+#include <Arduino.h>
+#include "pin_modes.hpp"
+
+class RobotDriver {
+    public:
+
+    void goToCoords(const double x1, const double y1, Coords *currenrCoord);
+
+    private:
+
+    void setMotors(int leftSpeed, int rightSpeed);
+    void goStraight(const double distance);
+    void letTurn(const double angle);
+
+};
 
 #endif

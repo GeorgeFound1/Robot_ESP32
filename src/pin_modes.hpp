@@ -1,6 +1,14 @@
 #ifndef PIN_MODES_HPP
 #define PIN_MODES_HPP
 
+// Класс для координат
+class Coords {
+    public:
+        double x;
+        double y;
+        double angle;
+};
+
 // Левый мотор
 const int AIN1 = 16;
 const int AIN2 = 17;
@@ -24,7 +32,7 @@ const int pwmResolution = 8;   // 8 бит (0-255)
 
 const double fromTicksToCM = 51.42; // перевод тиков в сантиметры 
 const double baseLenght = 15.85; // расстояние между серединами колес
-volatile long leftTicks = 0;
-volatile long rightTicks = 0;
+extern volatile long leftTicks;
+extern volatile long rightTicks;
 
 #endif

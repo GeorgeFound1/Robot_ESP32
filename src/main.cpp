@@ -3,12 +3,8 @@
 #include "pin_modes.hpp"
 #include "interrupts.hpp"
 
-// Класс для координат
-class Coords {
-  int x;
-  int y;
-};
-
+volatile long leftTicks = 0;
+volatile long rightTicks = 0;
 
 void setup() {
   Serial.begin(115200);
@@ -32,32 +28,29 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(encoderLeftA), readLeftEncoder, RISING);
   attachInterrupt(digitalPinToInterrupt(encoderRightA), readRightEncoder, RISING);
 
-  Serial.println("--- ТЕСТ ЖЕЛЕЗА ИСПРАВЛЕН ---");
   delay(1000);
 }
 
 
 void loop() {
+  Serial.println("ЖДЕМ 10 СЕКУНД....");
+  Coords currentCoord;
+  RobotDriver myRobot;
+  currentCoord.x = 0.0;
+  currentCoord.y = 0.0;
+  currentCoord.angle = 0.0;
   delay(10000);
-  const int sideLength = 100; 
-  const int turnAngle = 180; 
 
-  Serial.println("=== НАЧАЛО ДВИЖЕНИЯ ПО КВАДРАТУ ===");
+  Serial.println("======= ПРОВЕРКА ДВИЖЕНИЯ ПО КООРДИНАТАМ =======");
 
-  for (int i = 0; i < 2; i++) {
-    Serial.printf("Сторона %d: Едем вперед на %d см\n", i + 1, sideLength);
-    goStraight(sideLength);
-    
-    delay(500); 
+  myRobot.goToCoords(30, 0, &currentCoord);
+  myRobot.goToCoords(-12, 13, &currentCoord);
+  myRobot.goToCoords(36, -12, &currentCoord);
+  myRobot.goToCoords(42, 42, &currentCoord);
+  myRobot.goToCoords(21, -11, &currentCoord);  
+  myRobot.goToCoords(0, 0, &currentCoord);
 
-    Serial.printf("Поворот %d: Разворот на %d градусов\n", i + 1, turnAngle);
-    letTurn(turnAngle);
-    
-    delay(500); 
-  }
-
-  Serial.println("=== КВАДРАТ ЗАВЕРШЕН ===");
-  Serial.println("Ожидание 100 секунд перед следующим кругом...");
+  Serial.println("Ожидание 20 секунд перед следующим кругом...");
   
   delay(20000); 
 }

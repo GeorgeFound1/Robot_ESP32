@@ -43,11 +43,26 @@ void loop() {
 
   Serial.println("======= ПРОВЕРКА ДВИЖЕНИЯ ПО КООРДИНАТАМ =======");
 
-  myRobot.goToCoords(30, 0, &currentCoord);
+  myRobot.goToCoords(100, 0, &currentCoord);
+  delay(1000);
   myRobot.goToCoords(-12, 13, &currentCoord);
+  delay(1000);
   myRobot.goToCoords(36, -12, &currentCoord);
+  delay(1000);
   myRobot.goToCoords(42, 42, &currentCoord);
-  myRobot.goToCoords(21, -11, &currentCoord);  
+  delay(1000);
+  myRobot.goToCoords(21, -11, &currentCoord);
+  delay(1000);  
+  myRobot.goToCoords(10, -100, &currentCoord);
+  delay(1000);
+  myRobot.goToCoords(12, -13, &currentCoord);
+  delay(1000);
+  myRobot.goToCoords(66, 63, &currentCoord);
+  delay(1000);
+  myRobot.goToCoords(-42, -42, &currentCoord);
+  delay(1000);
+  myRobot.goToCoords(-21, 11, &currentCoord);
+  delay(1000); 
   myRobot.goToCoords(0, 0, &currentCoord);
 
   Serial.println("Ожидание 20 секунд перед следующим кругом...");

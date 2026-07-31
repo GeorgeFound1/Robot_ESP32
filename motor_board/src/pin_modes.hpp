@@ -10,16 +10,16 @@ class Coords {
 };
 
 // Левый мотор
-const int AIN1 = 16;
-const int AIN2 = 17;
-const int wirePWMA = 25;
+const int AIN1 = 17;
+const int AIN2 = 16;
+const int wirePWMA = 22;
 const int encoderLeftA = 32;
 const int encoderLeftB = 33;
 
 // Правый мотор
 const int BIN1 = 18;
 const int BIN2 = 19;
-const int wirePWMB = 26;
+const int wirePWMB = 23;
 const int encoderRightA = 34;
 const int encoderRightB = 35;
 

@@ -33,8 +33,8 @@ bool initCamera() {
     config.pin_d6 = Y8_GPIO_NUM;
     config.pin_d7 = Y9_GPIO_NUM;
     config.pin_xclk = XCLK_GPIO_NUM;
-    config.pin_sscb_sda = SIOD_GPIO_NUM;
-    config.pin_sscb_scl = SIOC_GPIO_NUM;
+    config.pin_sccb_sda = SIOD_GPIO_NUM;
+    config.pin_sccb_scl = SIOC_GPIO_NUM;
     config.pin_pwdn = PWDN_GPIO_NUM;
     config.pin_reset = RESET_GPIO_NUM;
     config.pin_vsync = VSYNC_GPIO_NUM;
@@ -45,7 +45,7 @@ bool initCamera() {
     
     config.pixel_format = PIXFORMAT_RGB565; 
 
-    config.frame_size = FRAMESIZE_QQVGA;
+    config.frame_size = FRAMESIZE_VGA;
     
     config.fb_count = 1;
 
@@ -54,6 +54,13 @@ bool initCamera() {
         Serial.printf("Camera init failed with error 0x%x\n", err);
         return false;
     }
+
+    sensor_t * s = esp_camera_sensor_get();
+    /*if (s) {
+        s->set_gain_ctrl(s, 0);       // Отключить автоусиление
+        s->set_exposure_ctrl(s, 0);   // Отключить автоэкспозицию
+        s->set_whitebal(s, 0);        // Отключить автобаланс белого
+    }*/
     
     return true;
 }
@@ -104,16 +111,17 @@ inline void getRGB(uint8_t *r, uint8_t *g, uint8_t *b, const uint8_t byte1, uint
 }
 
 inline bool isTargetColor(const uint8_t h, const uint8_t s, const uint8_t v) {
-    uint8_t max_h1 = 10;
+    uint8_t max_h1 = 7;
     uint8_t min_h1 = 0;
     uint8_t max_h2 = 180;
-    uint8_t min_h2 = 165;
+    uint8_t min_h2 = 173;
 
-    uint8_t min_s = 100;
-    uint8_t min_v = 50;
+    uint8_t min_s = 120;
+    uint8_t min_v = 40;
+    uint8_t max_v = 200;
 
     bool isHueTarget = (h >= min_h1 && h <= max_h1) || (h >= min_h2 && h <= max_h2);
-    bool isTarget = isHueTarget && (s >= min_s) && (v >= min_v);
+    bool isTarget = isHueTarget && (s >= min_s) && (v >= min_v && v <= max_v);
     if (isTarget) {
         return true;
     }
@@ -121,10 +129,10 @@ inline bool isTargetColor(const uint8_t h, const uint8_t s, const uint8_t v) {
 }
 
 float howFar(const int width, const int height) {
-    float focalLength = 0; //temporarily
-    const float realWidth = 0; //same
+    float focalLength = 540.0f; //temporarily
+    const float realWidth = 1.0f; //same
     const float pixelWidth = (float)width; //same
-    const float realHeight = 0; //same
+    const float realHeight = 3.0f; //same
     const float pixelHeight = (float)height; //same
 
     if (width <= 0 || height <= 0) return 0.0f;
@@ -132,14 +140,17 @@ float howFar(const int width, const int height) {
     float distanceX = (focalLength * realWidth) / pixelWidth;
     float distanceY = (focalLength * realHeight) / pixelHeight;
 
-    return (distanceX + distanceY) / 2.0f;
+    Serial.printf("dx = %f\n", distanceX);
+    Serial.printf("dy = %f\n", distanceY);
+
+    return distanceY;
 
 }
 
 float whatAngle(const int centerX) {
 
     const float camFOV = 60.0f; 
-    const int frameWidth = 160;    
+    const int frameWidth = 640;   
     const int center = frameWidth / 2;
 
     const float degPerpixel = camFOV / frameWidth;
@@ -149,19 +160,12 @@ float whatAngle(const int centerX) {
     return angle;
 }
 
-bool setCoords (camera_fb_t *fb, float *distance, float *angle) {
+bool setCoords (camera_fb_t *fb, float *smoothedDistance, float *smoothedAngle) {
 
-    if (!fb || !fb->buf || !distance || !angle) return false;
-    *distance = 0.0f;
-    *angle = 0.0f;
+    if (!fb || !fb->buf || !smoothedDistance || !smoothedAngle) return false;
 
-    long sumX = 0; 
-    long sumY = 0;
-    int pixelCount = 0; 
-    int minX = fb->width; 
-    int maxX = 0;
-    int minY = fb->height;
-    int maxY = 0;
+    uint16_t rowPixels[480] = {0};
+    uint16_t colPixels[640] = {0};
 
     for (int y = 0; y < fb->height; y++) {
         for (int x = 0; x < fb->width; x++) {
@@ -174,32 +178,110 @@ bool setCoords (camera_fb_t *fb, float *distance, float *angle) {
             rgbTohsv(r, g, b, &h, &s, &v);
 
             if (isTargetColor(h, s, v)) {
-                pixelCount++;
-                sumX += x;
-                sumY += y;
-
-                if (x < minX) minX = x;
-                if (x > maxX) maxX = x;
-                if (y < minY) minY = y;
-                if (y > maxY) maxY = y;
-
+                rowPixels[y]++;
+                colPixels[x]++;
             }
         }
     }
 
-    if (pixelCount > 15) {
-        int centerX = sumX / pixelCount;
-        int centerY = sumY / pixelCount;
+    const int noiseThresholdY = 10; 
+    const int noiseThresholdX = 4;
+    const int consecutiveNeeded = 3;
 
-        int width = (maxX >= minX) ? (maxX - minX + 1) : 0;
-        int height = (maxY >= minY) ? (maxY - minY + 1) : 0;
-
-        *distance = howFar(width, height);
-        *angle = whatAngle(centerX);
-        return true;
+    int minY = -1;
+    int consecutiveCount = 0;
+    for (int y = 0; y < fb->height; y++) {
+        if (rowPixels[y] >= noiseThresholdY) {
+            consecutiveCount++;
+            if (consecutiveCount >= consecutiveNeeded) {
+                minY = y - (consecutiveNeeded - 1);
+                break;
+            }
+        } else {
+            consecutiveCount = 0;
+        }
     }
 
-    return false;
+    int maxY = -1;
+    consecutiveCount = 0;
+    for (int y = fb->height - 1; y >= 0; y--) {
+        if (rowPixels[y] >= noiseThresholdY) {
+            consecutiveCount++;
+            if (consecutiveCount >= consecutiveNeeded) {
+                maxY = y + (consecutiveNeeded - 1);
+                break;
+            }
+        } else {
+            consecutiveCount = 0;
+        }
+    }
+
+    int minX = -1;
+    consecutiveCount = 0;
+    for (int x = 0; x < fb->width; x++) {
+        if (colPixels[x] >= noiseThresholdX) {
+            consecutiveCount++;
+            if (consecutiveCount >= consecutiveNeeded) {
+                minX = x - (consecutiveNeeded - 1);
+                break;
+            }
+        } else {
+            consecutiveCount = 0;
+        }
+    }
+
+    int maxX = -1;
+    consecutiveCount = 0;
+    for (int x = fb->width - 1; x >= 0; x--) {
+        if (colPixels[x] >= noiseThresholdX) {
+            consecutiveCount++;
+            if (consecutiveCount >= consecutiveNeeded) {
+                maxX = x + (consecutiveNeeded - 1);
+                break;
+            }
+        } else {
+            consecutiveCount = 0;
+        }
+    }
+
+    if (minY == -1 || maxY == -1 || minX == -1 || maxX == -1) return false;
+
+    int width = maxX - minX + 1;
+    int height = maxY - minY + 1;
+
+
+    if (height > 200 || width > 250) {
+        return false;
+    }
+
+    int boxArea = width * height;
+
+    int actualTargetPixels = 0;
+    for (int y = minY; y <= maxY; y++) {
+        actualTargetPixels += rowPixels[y];
+    }
+
+    float fillRatio = (float)actualTargetPixels / boxArea;
+
+    if (boxArea > 300 && fillRatio < 0.25f) { 
+        return false;
+    }
+
+    int centerX = (maxX + minX) / 2;
+
+    float distance = howFar(width, height);
+    float angle = whatAngle(centerX);
+    const float alpha = 0.15f;
+
+    if (*smoothedDistance == 0.0f) {
+        *smoothedDistance = distance;
+        *smoothedAngle = angle;
+    } else {
+        *smoothedDistance = alpha * distance + (1.0f - alpha) * (*smoothedDistance);
+        *smoothedAngle = alpha * angle + (1.0f - alpha) * (*smoothedAngle);
+    }
+
+    return true;
 }
 
 void setup() {
@@ -221,6 +303,17 @@ void loop() {
     if (!fb) {
         return;
     }
-    
+    static float distance = 0.0f;
+    static float angle = 0.0f;
+    if (setCoords(fb, &distance, &angle)) {
+        Serial.printf("distance = %f, angle = %f\n", distance, angle);
+    } else {
+        Serial.printf("Cannot find the object\n");
+        distance = 0.0f;
+        angle = 0.0f;
+    }
 
+    esp_camera_fb_return(fb);
+
+    delay(10);
 }

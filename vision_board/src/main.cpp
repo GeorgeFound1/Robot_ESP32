@@ -55,51 +55,21 @@ bool initCamera() {
         return false;
     }
 
+    for (int i = 0; i < 10; i++) {
+        camera_fb_t * fb = esp_camera_fb_get();
+        if (fb) esp_camera_fb_return(fb);
+        delay(50);
+    }
+
     sensor_t * s = esp_camera_sensor_get();
-    /*if (s) {
+    if (s) {
+
         s->set_gain_ctrl(s, 0);       // Отключить автоусиление
         s->set_exposure_ctrl(s, 0);   // Отключить автоэкспозицию
         s->set_whitebal(s, 0);        // Отключить автобаланс белого
-    }*/
+    }
     
     return true;
-}
-
-inline void rgbTohsv(const uint8_t r, const uint8_t g,const uint8_t b, uint8_t *h, uint8_t *s, uint8_t *v) {
-    uint8_t rgb_min = min(r, min(g, b));
-    uint8_t rgb_max = max(r, max(g, b));
-    
-    // 1. value (0-255)
-    *v = rgb_max;
-    if (*v == 0) {
-        *h = 0;
-        *s = 0;
-        return;
-    }
-
-    // 2. saturation (0-255)
-    int delta = rgb_max - rgb_min;
-    *s = (255 * delta) / *v;
-    if (*s == 0) {
-        *h = 0;
-        return;
-    }
-
-    // 3. hue (0-180 for uint8_t)
-    long hue;
-    if (rgb_max == r) {
-        hue = 0 + 43 * (g - b) / delta;
-    } else if (rgb_max == g) {
-        hue = 85 + 43 * (b - r) / delta;
-    } else {
-        hue = 128 + 43 * (r - g) / delta;
-    }
-
-    if (hue < 0) {
-        hue += 180;
-    }
-    
-    *h = (uint8_t)hue;
 }
 
 inline void getRGB(uint8_t *r, uint8_t *g, uint8_t *b, const uint8_t byte1, uint8_t byte2) {
@@ -111,14 +81,14 @@ inline void getRGB(uint8_t *r, uint8_t *g, uint8_t *b, const uint8_t byte1, uint
 }
 
 inline bool isTargetColor(const uint8_t h, const uint8_t s, const uint8_t v) {
-    uint8_t max_h1 = 7;
+    uint8_t max_h1 = 8;
     uint8_t min_h1 = 0;
     uint8_t max_h2 = 180;
-    uint8_t min_h2 = 173;
+    uint8_t min_h2 = 172;
 
-    uint8_t min_s = 120;
+    uint8_t min_s = 80;
     uint8_t min_v = 40;
-    uint8_t max_v = 200;
+    uint8_t max_v = 230;
 
     bool isHueTarget = (h >= min_h1 && h <= max_h1) || (h >= min_h2 && h <= max_h2);
     bool isTarget = isHueTarget && (s >= min_s) && (v >= min_v && v <= max_v);
@@ -160,6 +130,18 @@ float whatAngle(const int centerX) {
     return angle;
 }
 
+inline bool isTargetColor(const uint8_t r, const uint8_t g, const uint8_t b) {
+    uint16_t sum = r + g + b;
+    if (sum < 80) return false;
+
+    float r_norm = (float)r / sum; 
+    if (r_norm < 0.52f) return false;
+
+    if (r < g + 45 || r < b + 45) return false;
+
+    return true;
+}
+
 bool setCoords (camera_fb_t *fb, float *smoothedDistance, float *smoothedAngle) {
 
     if (!fb || !fb->buf || !smoothedDistance || !smoothedAngle) return false;
@@ -175,9 +157,8 @@ bool setCoords (camera_fb_t *fb, float *smoothedDistance, float *smoothedAngle) 
             uint8_t byte2 = fb->buf[index + 1];
             uint8_t r, g, b, h, s, v;
             getRGB(&r, &g, &b, byte1, byte2);
-            rgbTohsv(r, g, b, &h, &s, &v);
 
-            if (isTargetColor(h, s, v)) {
+            if (isTargetColor(r, g, b)) {
                 rowPixels[y]++;
                 colPixels[x]++;
             }
@@ -250,7 +231,7 @@ bool setCoords (camera_fb_t *fb, float *smoothedDistance, float *smoothedAngle) 
     int height = maxY - minY + 1;
 
 
-    if (height > 200 || width > 250) {
+    if (height > 600 || width > 700) {
         return false;
     }
 
@@ -263,7 +244,7 @@ bool setCoords (camera_fb_t *fb, float *smoothedDistance, float *smoothedAngle) 
 
     float fillRatio = (float)actualTargetPixels / boxArea;
 
-    if (boxArea > 300 && fillRatio < 0.25f) { 
+    if (boxArea > 500 && fillRatio < 0.1f) { 
         return false;
     }
 
@@ -283,6 +264,7 @@ bool setCoords (camera_fb_t *fb, float *smoothedDistance, float *smoothedAngle) 
 
     return true;
 }
+
 
 void setup() {
     Serial.begin(115200);

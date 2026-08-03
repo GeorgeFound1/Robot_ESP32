@@ -39,7 +39,7 @@ void loop() {
   currentCoord.x = 0.0;
   currentCoord.y = 0.0;
   currentCoord.angle = 0.0;
-  delay(10000);
+  delay(1000);
 
   Serial.println("======= ПРОВЕРКА ДВИЖЕНИЯ ПО КООРДИНАТАМ =======");
 

@@ -4,27 +4,26 @@
 #include "pin_modes.hpp"
 
 void RobotDriver::setMotors(int leftSpeed, int rightSpeed) {
-  // Левый мотор
+  // === ЛЕВЫЙ МОТОР ===
   if (leftSpeed >= 0) {
-    digitalWrite(AIN1, HIGH);
-    digitalWrite(AIN2, LOW);
-    ledcWrite(pwmChannelLeft, leftSpeed);
-  } else {
     digitalWrite(AIN1, LOW);
     digitalWrite(AIN2, HIGH);
-    ledcWrite(pwmChannelLeft, -leftSpeed);
-  }
-
-  // Правый мотор
-  if (rightSpeed >= 0) {
-    digitalWrite(BIN1, LOW);
-    digitalWrite(BIN2, HIGH);
-    ledcWrite(pwmChannelRight, rightSpeed);
   } else {
+    digitalWrite(AIN1, HIGH);
+    digitalWrite(AIN2, LOW);
+  }
+  ledcWrite(pwmChannelLeft, abs(leftSpeed));
+
+
+  // === ПРАВЫЙ МОТОР ===
+  if (rightSpeed >= 0) {
     digitalWrite(BIN1, HIGH);
     digitalWrite(BIN2, LOW);
-    ledcWrite(pwmChannelRight, -rightSpeed);
+  } else {
+    digitalWrite(BIN1, LOW);
+    digitalWrite(BIN2, HIGH);
   }
+  ledcWrite(pwmChannelRight, abs(rightSpeed));
 }
 
 void RobotDriver::goStraight(const double distance) {
@@ -47,7 +46,7 @@ void RobotDriver::goStraight(const double distance) {
 
   const int baseSpeed = 180;
 
-  while (leftTicks < targetTicks && rightTicks < targetTicks) {
+  while (abs(leftTicks) < targetTicks && abs(rightTicks) < targetTicks) {
 
     unsigned long currentTime = millis();
     double dt = (currentTime - lastTime) / 1000.0;
@@ -56,7 +55,7 @@ void RobotDriver::goStraight(const double distance) {
       continue;
     }
 
-    error = leftTicks - rightTicks;
+    error = -leftTicks + rightTicks;
     integral += error * dt;
     integral = constrain(integral, -500, 500);
     derivative = (error - lastError) / dt;
@@ -104,7 +103,7 @@ void RobotDriver::letTurn(const double angle) {
 
   long currentTicks = 0;
 
-  while (currentTicks < targetTicks) {
+  while (abs(currentTicks) < targetTicks) {
 
     currentTicks = (abs(leftTicks) + abs(rightTicks)) / 2;
     error = targetTicks - currentTicks;
@@ -119,15 +118,15 @@ void RobotDriver::letTurn(const double angle) {
     derivative = (error - lastError) / dt;
 
     outputSpeed = (int)(Kp * error + Kd * derivative);
-    outputSpeed = constrain(outputSpeed, 45, 180);
+    outputSpeed = constrain(outputSpeed, 80, 180);
 
     double syncError = abs(leftTicks) - abs(rightTicks);
 
     int leftSpeed = outputSpeed - (int)(Kp_sync * syncError);
     int rightSpeed = outputSpeed + (int)(Kp_sync * syncError);
 
-    leftSpeed = constrain(leftSpeed, 45, 180);
-    rightSpeed = constrain(rightSpeed, 45, 180);
+    leftSpeed = constrain(leftSpeed, 80, 180);
+    rightSpeed = constrain(rightSpeed, 80, 180);
 
     if (angle > 0) {
       setMotors(leftSpeed, -rightSpeed);

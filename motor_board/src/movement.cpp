@@ -4,7 +4,7 @@
 #include "pin_modes.hpp"
 
 void RobotDriver::setMotors(int leftSpeed, int rightSpeed) {
-  // === ЛЕВЫЙ МОТОР ===
+  // Left Motor
   if (leftSpeed >= 0) {
     digitalWrite(AIN1, LOW);
     digitalWrite(AIN2, HIGH);
@@ -15,7 +15,7 @@ void RobotDriver::setMotors(int leftSpeed, int rightSpeed) {
   ledcWrite(pwmChannelLeft, abs(leftSpeed));
 
 
-  // === ПРАВЫЙ МОТОР ===
+  // Right Motor
   if (rightSpeed >= 0) {
     digitalWrite(BIN1, HIGH);
     digitalWrite(BIN2, LOW);
@@ -28,8 +28,8 @@ void RobotDriver::setMotors(int leftSpeed, int rightSpeed) {
 
 void RobotDriver::goStraight(const double distance) {
 
-  leftTicks = 0;
-  rightTicks = 0;
+  long startLeft = leftTicks;
+  long startRight = rightTicks;
 
   double Kp = 7.5;
   double Ki = 0.09;
@@ -46,7 +46,9 @@ void RobotDriver::goStraight(const double distance) {
 
   const int baseSpeed = 180;
 
-  while (abs(leftTicks) < targetTicks && abs(rightTicks) < targetTicks) {
+  while (abs(leftTicks - startLeft) < targetTicks && abs(rightTicks - startRight) < targetTicks) {
+
+    updateOdometry();
 
     unsigned long currentTime = millis();
     double dt = (currentTime - lastTime) / 1000.0;
@@ -55,7 +57,7 @@ void RobotDriver::goStraight(const double distance) {
       continue;
     }
 
-    error = -leftTicks + rightTicks;
+    error = (leftTicks - startLeft) - (rightTicks - startRight);
     integral += error * dt;
     integral = constrain(integral, -500, 500);
     derivative = (error - lastError) / dt;
@@ -82,8 +84,8 @@ void RobotDriver::goStraight(const double distance) {
 }
 
 void RobotDriver::letTurn(const double angle) {
-  leftTicks = 0;
-  rightTicks = 0;
+  long startLeft = leftTicks;
+  long startRight = rightTicks;
 
   double Kp = 0.8;
   double Kd = 0.0;
@@ -105,7 +107,9 @@ void RobotDriver::letTurn(const double angle) {
 
   while (abs(currentTicks) < targetTicks) {
 
-    currentTicks = (abs(leftTicks) + abs(rightTicks)) / 2;
+    updateOdometry();
+
+    currentTicks = (abs(leftTicks - startLeft) + abs(rightTicks - startRight)) / 2;
     error = targetTicks - currentTicks;
 
     currentTime = millis();
@@ -120,7 +124,7 @@ void RobotDriver::letTurn(const double angle) {
     outputSpeed = (int)(Kp * error + Kd * derivative);
     outputSpeed = constrain(outputSpeed, 80, 180);
 
-    double syncError = abs(leftTicks) - abs(rightTicks);
+    double syncError = abs(leftTicks - startLeft) - abs(rightTicks - startRight);
 
     int leftSpeed = outputSpeed - (int)(Kp_sync * syncError);
     int rightSpeed = outputSpeed + (int)(Kp_sync * syncError);
@@ -144,16 +148,47 @@ void RobotDriver::letTurn(const double angle) {
   delay(10);
 }
 
-void RobotDriver::goToCoords(const double x1, const double y1, Coords *currenrCoord) {
+void RobotDriver::updateOdometry() {
+    static long lastLeft = 0;
+    static long lastRight = 0;
 
-    double x0 = currenrCoord->x;
-    double y0 = currenrCoord->y;
-    double angle0 = currenrCoord->angle;
+    long currentLeft = leftTicks;
+    long currentRight = rightTicks;
+
+    long dLeft = currentLeft - lastLeft;
+    long dRight = currentRight - lastRight;
+
+    lastLeft = currentLeft;
+    lastRight = currentRight;
+
+    if (dLeft == 0 && dRight == 0) return;
+
+    double dL = (double)dLeft / fromTicksToCM;
+    double dR = (double)dRight / fromTicksToCM;
+
+    double dS = (dL + dR) / 2.0;
+    double dThetaRad = (dR - dL) / baseLenght; 
+
+    double avgAngleRad = currentCoords.angle * (M_PI / 180.0) + (dThetaRad / 2.0);
+
+    currentCoords.x += dS * cos(avgAngleRad);
+    currentCoords.y += dS * sin(avgAngleRad);
+
+    currentCoords.angle += dThetaRad * (180.0 / M_PI);
+    while (currentCoords.angle > 180.0)  currentCoords.angle -= 360.0;
+    while (currentCoords.angle < -180.0) currentCoords.angle += 360.0;
+}
+
+void RobotDriver::goToCoords(const double x1, const double y1) {
+
+    double x0 = currentCoords.x;
+    double y0 = currentCoords.y;
+    double angle0 = currentCoords.angle;
 
     Serial.printf("Начальная точка: x = %.2f, y = %.2f\n", x0, y0);
 
     double distance = sqrt(pow((x1 - x0), 2) + pow((y1 - y0), 2));
-    double angle = atan2(y1 - y0, x1 - x0) * 180 / PI; // считаем угол вектора начало которого в currentCoord 
+    double angle = atan2(y1 - y0, x1 - x0) * 180 / PI; 
     double targetAngle = angle - angle0;
     while (targetAngle > 180) targetAngle -= 360;
     while (targetAngle < -180) targetAngle += 360;
@@ -162,8 +197,6 @@ void RobotDriver::goToCoords(const double x1, const double y1, Coords *currenrCo
 
     letTurn(targetAngle);
     goStraight(distance);
-    currenrCoord->x = x1;
-    currenrCoord->y = y1;
-    currenrCoord->angle = angle;
-    Serial.printf("Приехали в: x = %.2f, y = %.2f\n", x1, y1);
+    Coords now = getCoords();
+    Serial.printf("Приехали в: x = %.2f, y = %.2f, angle = %.02f\n", now.x, now.y, now.angle);
 }

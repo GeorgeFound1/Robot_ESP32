@@ -34,36 +34,32 @@ void setup() {
 
 void loop() {
   Serial.println("ЖДЕМ 10 СЕКУНД....");
-  Coords currentCoord;
-  RobotDriver myRobot;
-  currentCoord.x = 0.0;
-  currentCoord.y = 0.0;
-  currentCoord.angle = 0.0;
+  static RobotDriver myRobot;
   delay(1000);
 
   Serial.println("======= ПРОВЕРКА ДВИЖЕНИЯ ПО КООРДИНАТАМ =======");
 
-  myRobot.goToCoords(100, 0, &currentCoord);
+  myRobot.goToCoords(100, 0);
   delay(1000);
-  myRobot.goToCoords(-12, 13, &currentCoord);
+  myRobot.goToCoords(-12, 13);
   delay(1000);
-  myRobot.goToCoords(36, -12, &currentCoord);
+  myRobot.goToCoords(36, -12);
   delay(1000);
-  myRobot.goToCoords(42, 42, &currentCoord);
+  myRobot.goToCoords(42, 42);
   delay(1000);
-  myRobot.goToCoords(21, -11, &currentCoord);
+  myRobot.goToCoords(21, -11);
   delay(1000);  
-  myRobot.goToCoords(10, -100, &currentCoord);
+  myRobot.goToCoords(10, -100);
   delay(1000);
-  myRobot.goToCoords(12, -13, &currentCoord);
+  myRobot.goToCoords(12, -13);
   delay(1000);
-  myRobot.goToCoords(66, 63, &currentCoord);
+  myRobot.goToCoords(66, 63);
   delay(1000);
-  myRobot.goToCoords(-42, -42, &currentCoord);
+  myRobot.goToCoords(-42, -42);
   delay(1000);
-  myRobot.goToCoords(-21, 11, &currentCoord);
+  myRobot.goToCoords(-21, 11);
   delay(1000); 
-  myRobot.goToCoords(0, 0, &currentCoord);
+  myRobot.goToCoords(0, 0);
 
   Serial.println("Ожидание 20 секунд перед следующим кругом...");
   

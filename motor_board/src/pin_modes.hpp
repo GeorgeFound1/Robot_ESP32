@@ -1,14 +1,6 @@
 #ifndef PIN_MODES_HPP
 #define PIN_MODES_HPP
 
-// Класс для координат
-class Coords {
-    public:
-        double x;
-        double y;
-        double angle;
-};
-
 // Левый мотор
 const int AIN1 = 17;
 const int AIN2 = 16;

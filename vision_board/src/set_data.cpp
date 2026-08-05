@@ -8,10 +8,10 @@ uint8_t calculateChecksum(const uint8_t *data, size_t length) {
     return crc;
 }
 
-void dataPackage(float dist, float ang, bool detect, CameraData *data) {
+void dataPackage(float dist, float ang, bool detected, CameraData *data) {
     data->angle = ang;
     data->distance = dist;
-    data->detected = detect;
+    data->detected = detected;
     data->startByte = START_MARKER;
     data->checksum = calculateChecksum((const uint8_t*)data, sizeof(CameraData) - 1);
 

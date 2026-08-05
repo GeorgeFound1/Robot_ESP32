@@ -9,15 +9,34 @@ uint8_t calculateChecksum(const uint8_t *data, size_t length) {
     return crc;
 }
 
-bool dataUnpackage(CameraData *data, TargetData *target) {
-
-    if (data->startByte != START_MARKER || data->checksum != calculateChecksum((const uint8_t*)data, sizeof(CameraData) - 1)) {
-        return false;
-    }
+void dataCopy(CameraData *data, TargetData *target) {
 
     target->detected = data->detected;
     target->distance = (double)data->distance;
     target->angle = (double)data->angle;
 
-    return true;
+    return;
+}
+
+bool dataUnpackage(CameraData *packet) {
+
+    while (Serial2.available() > 0 && Serial2.peek() != START_MARKER) {
+        Serial2.read();
+    }
+
+    if (Serial2.available() >= sizeof(CameraData)) {
+        uint8_t buffer[sizeof(CameraData)];
+        
+        size_t bytesRead = Serial2.readBytes(buffer, sizeof(CameraData));
+        
+        if (bytesRead == sizeof(CameraData)) {
+            uint8_t crc = calculateChecksum(buffer, sizeof(CameraData) - 1);
+            
+            if (crc == buffer[sizeof(CameraData) - 1] && (buffer[0] == START_MARKER)) {
+                memcpy(packet, buffer, sizeof(CameraData));
+                return true;
+            }
+        }
+    }
+    return false;
 }

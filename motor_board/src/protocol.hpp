@@ -2,6 +2,7 @@
 #define PROTOCOL_HPP
 
 #include <Arduino.h>
+#include "target_search.hpp"
 
 #pragma pack(push, 1)
 struct CameraData {
@@ -15,7 +16,8 @@ struct CameraData {
 
 const uint8_t START_MARKER = 0xAA;
 
-void dataPackage(float distance, float angle, bool detected, CameraData *data);
+bool dataUnpackage(CameraData *packet);
+void dataCopy(CameraData *data, TargetData *target);
 uint8_t calculateChecksum(const uint8_t* data, size_t length);
 
 #endif

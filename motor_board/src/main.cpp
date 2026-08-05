@@ -2,12 +2,18 @@
 #include "movement.hpp"
 #include "pin_modes.hpp"
 #include "interrupts.hpp"
+#include "protocol.hpp"
+#include "target_search.hpp"
 
 volatile long leftTicks = 0;
 volatile long rightTicks = 0;
 
+#define TIME_TO_GET_PACKET 500
+
 void setup() {
   Serial.begin(115200);
+
+  Serial2.begin(115200, SERIAL_8N1, RX_PIN, -1);
   
   pinMode(AIN1, OUTPUT);
   pinMode(AIN2, OUTPUT);
@@ -28,40 +34,24 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(encoderLeftA), readLeftEncoder, RISING);
   attachInterrupt(digitalPinToInterrupt(encoderRightA), readRightEncoder, RISING);
 
-  delay(1000);
+  delay(10000);
 }
 
 
 void loop() {
-  Serial.println("ЖДЕМ 10 СЕКУНД....");
+
   static RobotDriver myRobot;
-  delay(1000);
+  static TargetData target;
+  static unsigned long lastTimeFromData = 0;
 
-  Serial.println("======= ПРОВЕРКА ДВИЖЕНИЯ ПО КООРДИНАТАМ =======");
+  CameraData packet;
+  if (dataUnpackage(&packet)) {
+    dataCopy(&packet, &target);
+    lastTimeFromData = millis();
+  } 
 
-  myRobot.goToCoords(100, 0);
-  delay(1000);
-  myRobot.goToCoords(-12, 13);
-  delay(1000);
-  myRobot.goToCoords(36, -12);
-  delay(1000);
-  myRobot.goToCoords(42, 42);
-  delay(1000);
-  myRobot.goToCoords(21, -11);
-  delay(1000);  
-  myRobot.goToCoords(10, -100);
-  delay(1000);
-  myRobot.goToCoords(12, -13);
-  delay(1000);
-  myRobot.goToCoords(66, 63);
-  delay(1000);
-  myRobot.goToCoords(-42, -42);
-  delay(1000);
-  myRobot.goToCoords(-21, 11);
-  delay(1000); 
-  myRobot.goToCoords(0, 0);
-
-  Serial.println("Ожидание 20 секунд перед следующим кругом...");
-  
-  delay(20000); 
+  /*if(millis() - lastTimeFromData > TIME_TO_GET_PACKET) {
+    myRobot.goToCoords(0, 0);
+  }*/
+  Serial.printf("Distance = %0.2f angle = %0.2f\n", target.distance, target.angle);
 }

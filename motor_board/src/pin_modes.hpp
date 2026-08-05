@@ -1,14 +1,16 @@
 #ifndef PIN_MODES_HPP
 #define PIN_MODES_HPP
 
-// Левый мотор
+#define RX_PIN 4
+
+// Left motor
 const int AIN1 = 17;
 const int AIN2 = 16;
 const int wirePWMA = 22;
 const int encoderLeftA = 32;
 const int encoderLeftB = 33;
 
-// Правый мотор
+// Right motor
 const int BIN1 = 18;
 const int BIN2 = 19;
 const int wirePWMB = 23;

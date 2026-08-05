@@ -12,7 +12,7 @@ void setup() {
     
     Serial.println("\n--- ESP32-CAM Test Start ---");
 
-    Serial2.begin(115200, SERIAL_8N1, -1, 14); 
+    Serial2.begin(115200, SERIAL_8N1, -1, TX_PIN); 
 
     if (initCamera()) {
         Serial.println("Camera init SUCCESS!");

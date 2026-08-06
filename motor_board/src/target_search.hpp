@@ -1,11 +1,20 @@
 #ifndef TARGET_SEARCH_HPP
 #define TARGET_SEARCH_HPP
 
-struct TargetData {
+#include "movement.hpp"
 
-    bool detected;
-    double distance;
-    double angle;
+struct TargetCoords {
+
+    double x;
+    double y;
 };
+
+enum SearchState {
+    SEARCH_ROTATE,
+    SEARCH_MOVE, 
+    SEARCH_DETECTED
+};
+
+void calculateCoords(const TargetData target, const RobotDriver myRobot, TargetCoords *coords);
 
 #endif

@@ -34,6 +34,9 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(encoderLeftA), readLeftEncoder, RISING);
   attachInterrupt(digitalPinToInterrupt(encoderRightA), readRightEncoder, RISING);
 
+  pinMode(ECHO, INPUT);
+  pinMode(TRIG, OUTPUT);
+
   delay(10000);
 }
 
@@ -41,17 +44,31 @@ void setup() {
 void loop() {
 
   static RobotDriver myRobot;
+
   static TargetData target;
+  target.detected = false;
+
+  static TargetCoords coordOfTarget;
+
   static unsigned long lastTimeFromData = 0;
 
   CameraData packet;
   if (dataUnpackage(&packet)) {
     dataCopy(&packet, &target);
     lastTimeFromData = millis();
+
+
   } 
 
   /*if(millis() - lastTimeFromData > TIME_TO_GET_PACKET) {
     myRobot.goToCoords(0, 0);
   }*/
   Serial.printf("Distance = %0.2f angle = %0.2f\n", target.distance, target.angle);
+
+  if (target.detected) {
+
+    calculateCoords(target, myRobot, &coordOfTarget);
+    myRobot.goToCoords(coordOfTarget.x, coordOfTarget.y);
+
+  } 
 }

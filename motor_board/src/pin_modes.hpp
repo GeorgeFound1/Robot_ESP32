@@ -17,6 +17,10 @@ const int wirePWMB = 23;
 const int encoderRightA = 34;
 const int encoderRightB = 35;
 
+//Ultsrasonic
+const int ECHO = 25;
+const int TRIG = 24;
+
 
 const int pwmChannelLeft = 0;  // Виртуальный канал 0
 const int pwmChannelRight = 1; // Виртуальный канал 1
@@ -26,7 +30,12 @@ const int pwmResolution = 8;   // 8 бит (0-255)
 
 const double fromTicksToCM = 51.42; // перевод тиков в сантиметры 
 const double baseLenght = 15.85; // расстояние между серединами колес
+
 extern volatile long leftTicks;
 extern volatile long rightTicks;
+
+extern volatile unsigned long echoStartTime;
+extern volatile unsigned long echoDuration;
+extern volatile bool newReadingAvailable;
 
 #endif

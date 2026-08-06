@@ -17,3 +17,12 @@ void IRAM_ATTR readRightEncoder() {
     rightTicks++;
   }
 }
+
+void IRAM_ATTR readUltrasonic() {
+  if (digitalRead(ECHO) == HIGH) {
+        echoStartTime = micros(); 
+    } else {
+        echoDuration = micros() - echoStartTime;
+        newReadingAvailable = true;
+    }
+}

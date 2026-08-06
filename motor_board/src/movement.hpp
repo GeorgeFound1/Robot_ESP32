@@ -10,6 +10,13 @@ struct Coords {
     double angle = 0.0;
 };
 
+struct TargetData {
+
+    bool detected;
+    double distance;
+    double angle;
+};
+
 class RobotDriver {
 public:
     RobotDriver(double startX = 0.0, double startY = 0.0, double startAngle = 0.0) {
@@ -19,6 +26,7 @@ public:
     }
 
     void goToCoords(const double x1, const double y1);
+    void searchTarget(const TargetData target);
 
     Coords getCoords() const { return currentCoords; }
 

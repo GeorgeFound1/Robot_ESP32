@@ -3,5 +3,6 @@
 
 void IRAM_ATTR readLeftEncoder();
 void IRAM_ATTR readRightEncoder();
+void IRAM_ATTR readUltrasonic();
 
 #endif

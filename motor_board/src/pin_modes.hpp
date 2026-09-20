@@ -19,7 +19,7 @@ const int encoderRightB = 35;
 
 //Ultsrasonic
 const int ECHO = 25;
-const int TRIG = 24;
+const int TRIG = 26;
 
 
 const int pwmChannelLeft = 0;  // Виртуальный канал 0
@@ -34,8 +34,5 @@ const double baseLenght = 15.85; // расстояние между середи
 extern volatile long leftTicks;
 extern volatile long rightTicks;
 
-extern volatile unsigned long echoStartTime;
-extern volatile unsigned long echoDuration;
-extern volatile bool newReadingAvailable;
 
 #endif

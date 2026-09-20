@@ -2,6 +2,7 @@
 #include <math.h>
 #include "movement.hpp"
 #include "pin_modes.hpp"
+#include "target_search.hpp"
 
 void RobotDriver::setMotors(int leftSpeed, int rightSpeed) {
   // Left Motor
@@ -14,7 +15,6 @@ void RobotDriver::setMotors(int leftSpeed, int rightSpeed) {
   }
   ledcWrite(pwmChannelLeft, abs(leftSpeed));
 
-
   // Right Motor
   if (rightSpeed >= 0) {
     digitalWrite(BIN1, HIGH);
@@ -26,64 +26,102 @@ void RobotDriver::setMotors(int leftSpeed, int rightSpeed) {
   ledcWrite(pwmChannelRight, abs(rightSpeed));
 }
 
-void RobotDriver::goStraight(const double distance) {
 
-  long startLeft = leftTicks;
-  long startRight = rightTicks;
+void RobotDriver::startGoStraight(const double distance) {
+    gsStartLeft = leftTicks;
+    gsStartRight = rightTicks;
+    gsIntegral = 0.0;
+    gsLastError = 0.0;
+    gsLastTime = millis();
+    gsTargetTicks = distance * fromTicksToCM;
+    motionState = MotionState::GOING_STRAIGHT;
+}
 
-  double Kp = 7.5;
-  double Ki = 0.09;
-  double Kd = 0.25;
+void RobotDriver::stepGoStraight(float obstacleDistance) {
+    static const double Kp = 7.5;
+    static const double Ki = 0.09;
+    static const double Kd = 0.25;
+    static const int maxSpeed = 150;
+    static const int minSpeed = 30;
 
-  double error = 0.0;
-  double lastError = 0.0;
-  double integral = 0.0;
-  double derivative = 0.0;
-
-  unsigned long lastTime = millis();
-  
-  long targetTicks = distance * fromTicksToCM; 
-
-  const int baseSpeed = 180;
-
-  while (abs(leftTicks - startLeft) < targetTicks && abs(rightTicks - startRight) < targetTicks) {
 
     updateOdometry();
 
-    unsigned long currentTime = millis();
-    double dt = (currentTime - lastTime) / 1000.0;
-
-    if (dt == 0) {
-      continue;
+        int baseSpeed = maxSpeed;
+        if (currentTarget.detected && currentTarget.distance < 35.0) {
+        float t = (currentTarget.distance - 30.0f) / (50.0f - 30.0f);
+        t = constrain(t, 0.0f, 1.0f);
+        baseSpeed = minSpeed + (int)(t * (maxSpeed - minSpeed));
     }
 
-    error = (leftTicks - startLeft) - (rightTicks - startRight);
-    integral += error * dt;
-    integral = constrain(integral, -500, 500);
-    derivative = (error - lastError) / dt;
 
-    double controlOutput = Kp * (error) + Ki * integral + Kd * derivative;
-    int leftSpeed = baseSpeed - (int)controlOutput;
-    int rightSpeed = baseSpeed + (int)controlOutput; 
+    if (obstacleDistance > 0.0 && obstacleDistance <= 20.0) {
+        setMotors(0, 0);
+        Serial.println("goStraight: препятствие рядом, остановка");
+        motionState = MotionState::IDLE;
+        return;
+    }
+    if (currentTarget.detected && currentTarget.distance <= 30.0) {
+        setMotors(0, 0);
+        Serial.println("goStraight: цель уже близко, остановка");
+        motionState = MotionState::IDLE;
+        return;
+    }
+
+    long currentTicks = (abs(leftTicks - gsStartLeft) + abs(rightTicks - gsStartRight)) / 2;
+    if (currentTicks >= gsTargetTicks) {
+        setMotors(0, 0);
+        Serial.printf("Ticks: LEFT >> %0.2f ||| RIGHT >> %0.2f\n",
+                      (double)leftTicks / fromTicksToCM, (double)rightTicks / fromTicksToCM);
+        Serial.printf("Приехали в: x = %.2f, y = %.2f, angle = %.02f\n",
+                      currentCoords.x, currentCoords.y, currentCoords.angle);
+        motionState = MotionState::IDLE;
+        return;
+    }
+
+    unsigned long currentTime = millis();
+    double dt = (currentTime - gsLastTime) / 1000.0;
+    if (dt == 0) {
+        return; // подождём следующего вызова
+    }
+
+    double error = (leftTicks - gsStartLeft) - (rightTicks - gsStartRight);
+    gsIntegral += error * dt;
+    gsIntegral = constrain(gsIntegral, -500, 500);
+    double derivative = (error - gsLastError) / dt;
+
+    double controlOutput = Kp * error + Ki * gsIntegral + Kd * derivative;
+    int leftSpeed  = baseSpeed - (int)controlOutput;
+    int rightSpeed = baseSpeed + (int)controlOutput;
 
     leftSpeed  = constrain(leftSpeed, 0, 255);
     rightSpeed = constrain(rightSpeed, 0, 255);
-
     setMotors(leftSpeed, rightSpeed);
 
-    //Serial.printf("Ticks: LEFT >> %d ||| RIGHT >> %d\n", leftTicks, rightTicks);
-
-    lastError = error;
-    lastTime = currentTime;
-
-    delay(10);
-  }
-  setMotors(0, 0);
-  Serial.printf("Ticks: LEFT >> %0.2f ||| RIGHT >> %0.2f\n", (double)leftTicks / fromTicksToCM,  (double)rightTicks / fromTicksToCM);
-  delay(10);
+    gsLastError = error;
+    gsLastTime = currentTime;
 }
 
+void RobotDriver::update(float obstacleDistance) {
+    if (motionState == MotionState::GOING_STRAIGHT) {
+        stepGoStraight(obstacleDistance);
+    }
+}
+
+void RobotDriver::goStraightBlocking(const double distance) {
+    startGoStraight(distance);
+    while (motionState == MotionState::GOING_STRAIGHT) {
+        float obstacleDistance = getDistance();
+        updateTargetData();
+        stepGoStraight(obstacleDistance);
+    }
+}
+
+
 void RobotDriver::letTurn(const double angle) {
+
+  resetSonarBuffer();
+
   long startLeft = leftTicks;
   long startRight = rightTicks;
 
@@ -108,6 +146,7 @@ void RobotDriver::letTurn(const double angle) {
   while (abs(currentTicks) < targetTicks) {
 
     updateOdometry();
+    getDistance();
 
     currentTicks = (abs(leftTicks - startLeft) + abs(rightTicks - startRight)) / 2;
     error = targetTicks - currentTicks;
@@ -137,13 +176,15 @@ void RobotDriver::letTurn(const double angle) {
     } else {
       setMotors(-leftSpeed, rightSpeed);
     }
-    
+
     lastError = error;
     lastTime = currentTime;
-
   }
 
   setMotors(0, 0);
+
+  resetSonarBuffer();
+
   Serial.printf("Ticks: LEFT >> %ld ||| RIGHT >> %ld\n", leftTicks, rightTicks);
   delay(10);
 }
@@ -167,7 +208,7 @@ void RobotDriver::updateOdometry() {
     double dR = (double)dRight / fromTicksToCM;
 
     double dS = (dL + dR) / 2.0;
-    double dThetaRad = (dR - dL) / baseLenght; 
+    double dThetaRad = (dR - dL) / baseLenght;
 
     double avgAngleRad = currentCoords.angle * (M_PI / 180.0) + (dThetaRad / 2.0);
 
@@ -180,7 +221,6 @@ void RobotDriver::updateOdometry() {
 }
 
 void RobotDriver::goToCoords(const double x1, const double y1) {
-
     double x0 = currentCoords.x;
     double y0 = currentCoords.y;
     double angle0 = currentCoords.angle;
@@ -188,15 +228,14 @@ void RobotDriver::goToCoords(const double x1, const double y1) {
     Serial.printf("Начальная точка: x = %.2f, y = %.2f\n", x0, y0);
 
     double distance = sqrt(pow((x1 - x0), 2) + pow((y1 - y0), 2));
-    double angle = atan2(y1 - y0, x1 - x0) * 180 / PI; 
+    double angle = atan2(y1 - y0, x1 - x0) * 180 / PI;
     double targetAngle = angle - angle0;
     while (targetAngle > 180) targetAngle -= 360;
     while (targetAngle < -180) targetAngle += 360;
 
     Serial.printf("Поворачиваем на %.2f угол\n", targetAngle);
-
     letTurn(targetAngle);
-    goStraight(distance);
-    Coords now = getCoords();
-    Serial.printf("Приехали в: x = %.2f, y = %.2f, angle = %.02f\n", now.x, now.y, now.angle);
+
+    Serial.println("Едем к цели...");
+    startGoStraight(distance); 
 }

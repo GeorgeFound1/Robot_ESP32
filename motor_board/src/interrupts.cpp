@@ -1,5 +1,8 @@
 #include <Arduino.h>
 #include "pin_modes.hpp"
+#include "target_search.hpp"
+#include "interrupts.hpp"
+
 
 void IRAM_ATTR readLeftEncoder() {
   // Если сигналы на А и B несовпадают, значит крутимся в одну сторону, если разные — в другую

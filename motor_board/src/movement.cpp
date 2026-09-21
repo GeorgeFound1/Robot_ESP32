@@ -70,7 +70,8 @@ void RobotDriver::stepGoStraight(float obstacleDistance) {
   }
 
   if (currentTarget.detected &&
-    currentTarget.distance > TARGET_STOP_DISTANCE &&
+    currentTarget.distance > 0.0 &&
+    currentTarget.distance <= TARGET_MAX_TURN_DISTANCE &&
     fabs(currentTarget.angle) > TARGET_SAFE_ANGLE) {
     setMotors(0, 0);
     Serial.printf(

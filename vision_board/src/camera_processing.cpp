@@ -51,6 +51,8 @@ inline bool isTargetColor(const uint8_t r, const uint8_t g, const uint8_t b) {
 
     if (r < g + 45 || r < b + 45) return false;
 
+    if ((uint32_t)g * 100 > (uint32_t)sum * 25) return false;
+
     return true;
 }
 
@@ -61,7 +63,7 @@ bool setCoords (camera_fb_t *fb, float *smoothedDistance, float *smoothedAngle) 
     uint16_t rowPixels[480] = {0};
     uint16_t colPixels[640] = {0};
 
-    for (int y = 0; y < fb->height; y++) {
+    for (int y = (fb->height / 3); y < fb->height; y++) {
         for (int x = 0; x < fb->width; x++) {
 
             int index = (y * fb->width + x) * 2;
@@ -143,7 +145,7 @@ bool setCoords (camera_fb_t *fb, float *smoothedDistance, float *smoothedAngle) 
     int height = maxY - minY + 1;
 
 
-    if (height > 600 || width > 700) {
+    if (height > 500 || width > 300) {
         return false;
     }
 
@@ -164,7 +166,7 @@ bool setCoords (camera_fb_t *fb, float *smoothedDistance, float *smoothedAngle) 
 
     float distance = howFar(width, height);
     float angle = whatAngle(centerX);
-    const float alpha = 0.5f;
+    const float alpha = 0.8f;
 
     if (*smoothedDistance == 0.0f) {
         *smoothedDistance = distance;

@@ -70,9 +70,9 @@ void loop() {
   if (currentTarget.detected) {
     lastSeenCloseTime = millis(); // цель видна прямо сейчас — обновляем метку
 
-    if (currentTarget.distance > 35.0) {
-      //Serial.println("-> Режим: Движение к цели (goToCoords)");
-      //Serial.printf("-> ЕДЕМ, dist=%.1f\n", currentTarget.distance);
+    if (currentTarget.distance > TARGET_STOP_DISTANCE) {
+      Serial.println("-> Режим: Движение к цели (goToCoords)");
+      Serial.printf("-> ЕДЕМ, dist=%.1f\n", currentTarget.distance);
       calculateCoords(currentTarget, myRobot, &coordOfTarget);
       myRobot.goToCoords(coordOfTarget.x, coordOfTarget.y);
     } else {
@@ -81,7 +81,7 @@ void loop() {
       //Serial.println("-> Режим: Цель ближе 30 см (Стоп)");
     }
   } else {
-    // Цель не видна прямо сейчас, но недавно была рядом — не срываемся в поиск сразу
+     //Цель не видна прямо сейчас, но недавно была рядом — не срываемся в поиск сразу
     if (millis() - lastSeenCloseTime < LOST_GRACE_PERIOD) {
       myRobot.stop();
       //Serial.println("-> Цель временно не видна, ждём (grace period)");

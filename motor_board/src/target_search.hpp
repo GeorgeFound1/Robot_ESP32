@@ -26,6 +26,9 @@ extern volatile unsigned long echoDuration;
 extern volatile bool newReadingAvailable;
 extern volatile unsigned long echoStartTime;
 
+const float TARGET_SLOW_DISTACNE = 50.0;
+const float TARGET_STOP_DISTANCE = 25.0;
+
 extern TargetData currentTarget;
 extern unsigned long lastTargetUpdateTime;
 

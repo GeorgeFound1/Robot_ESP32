@@ -47,9 +47,9 @@ void RobotDriver::stepGoStraight(float obstacleDistance) {
 
     updateOdometry();
 
-        int baseSpeed = maxSpeed;
-        if (currentTarget.detected && currentTarget.distance < 35.0) {
-        float t = (currentTarget.distance - 30.0f) / (50.0f - 30.0f);
+    int baseSpeed = maxSpeed;
+    if (currentTarget.detected && currentTarget.distance < TARGET_SLOW_DISTACNE) {
+        float t = (currentTarget.distance - TARGET_STOP_DISTANCE) / (TARGET_SLOW_DISTACNE - TARGET_STOP_DISTANCE);
         t = constrain(t, 0.0f, 1.0f);
         baseSpeed = minSpeed + (int)(t * (maxSpeed - minSpeed));
     }
@@ -61,7 +61,7 @@ void RobotDriver::stepGoStraight(float obstacleDistance) {
         motionState = MotionState::IDLE;
         return;
     }
-    if (currentTarget.detected && currentTarget.distance <= 30.0) {
+    if (currentTarget.detected && currentTarget.distance <= TARGET_STOP_DISTANCE) {
         setMotors(0, 0);
         Serial.println("goStraight: цель уже близко, остановка");
         motionState = MotionState::IDLE;
@@ -172,9 +172,9 @@ void RobotDriver::letTurn(const double angle) {
     rightSpeed = constrain(rightSpeed, 80, 180);
 
     if (angle > 0) {
-      setMotors(leftSpeed, -rightSpeed);
-    } else {
       setMotors(-leftSpeed, rightSpeed);
+    } else {
+      setMotors(leftSpeed, -rightSpeed);
     }
 
     lastError = error;

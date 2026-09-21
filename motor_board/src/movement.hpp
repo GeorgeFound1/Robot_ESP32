@@ -34,6 +34,9 @@ public:
     float getDistance();
     void stop() { setMotors(0, 0); motionState = MotionState::IDLE; }
 
+    void letTurn(const double angle);
+    void startGoStraight(const double distance);
+
 private:
     Coords currentCoords;
 
@@ -50,11 +53,9 @@ private:
 
     void updateOdometry();
     void setMotors(int leftSpeed, int rightSpeed);
-    void letTurn(const double angle); // без изменений, остаётся блокирующим
 
-    void startGoStraight(const double distance);
     void stepGoStraight(float obstacleDistance);
-    void goStraightBlocking(const double distance); // для searchTarget()
+    void goStraightBlocking(const double distance);
 };
 
 #endif

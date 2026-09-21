@@ -38,35 +38,48 @@ void RobotDriver::startGoStraight(const double distance) {
 }
 
 void RobotDriver::stepGoStraight(float obstacleDistance) {
-    static const double Kp = 7.5;
-    static const double Ki = 0.09;
-    static const double Kd = 0.25;
-    static const int maxSpeed = 150;
-    static const int minSpeed = 30;
+  static const double Kp = 7.5;
+  static const double Ki = 0.09;
+  static const double Kd = 0.25;
+  static const int maxSpeed = 150;
+  static const int minSpeed = 30;
 
 
-    updateOdometry();
+  updateOdometry();
 
-    int baseSpeed = maxSpeed;
-    if (currentTarget.detected && currentTarget.distance < TARGET_SLOW_DISTACNE) {
-        float t = (currentTarget.distance - TARGET_STOP_DISTANCE) / (TARGET_SLOW_DISTACNE - TARGET_STOP_DISTANCE);
-        t = constrain(t, 0.0f, 1.0f);
-        baseSpeed = minSpeed + (int)(t * (maxSpeed - minSpeed));
-    }
+  int baseSpeed = maxSpeed;
+  if (currentTarget.detected && currentTarget.distance < TARGET_SLOW_DISTACNE) {
+      float t = (currentTarget.distance - TARGET_STOP_DISTANCE) / (TARGET_SLOW_DISTACNE - TARGET_STOP_DISTANCE);
+      t = constrain(t, 0.0f, 1.0f);
+      baseSpeed = minSpeed + (int)(t * (maxSpeed - minSpeed));
+  }
 
 
-    if (obstacleDistance > 0.0 && obstacleDistance <= 20.0) {
-        setMotors(0, 0);
-        Serial.println("goStraight: препятствие рядом, остановка");
-        motionState = MotionState::IDLE;
-        return;
-    }
-    if (currentTarget.detected && currentTarget.distance <= TARGET_STOP_DISTANCE) {
-        setMotors(0, 0);
-        Serial.println("goStraight: цель уже близко, остановка");
-        motionState = MotionState::IDLE;
-        return;
-    }
+  if (obstacleDistance > 0.0 && obstacleDistance <= 20.0) {
+    setMotors(0, 0);
+    Serial.println("goStraight: препятствие рядом, остановка");
+    motionState = MotionState::IDLE;
+    return;
+  }
+
+  if (currentTarget.detected && currentTarget.distance <= TARGET_STOP_DISTANCE) {
+    setMotors(0, 0);
+    Serial.println("goStraight: достигнута дистанция остановки");
+    motionState = MotionState::IDLE;
+    return;
+  }
+
+  if (currentTarget.detected &&
+    currentTarget.distance > TARGET_STOP_DISTANCE &&
+    fabs(currentTarget.angle) > TARGET_SAFE_ANGLE) {
+    setMotors(0, 0);
+    Serial.printf(
+        "goStraight: цель слишком сбоку (%.1f), остановка для коррекции курса\n",
+        currentTarget.angle
+    );
+    motionState = MotionState::IDLE;
+    return;
+  }
 
     long currentTicks = (abs(leftTicks - gsStartLeft) + abs(rightTicks - gsStartRight)) / 2;
     if (currentTicks >= gsTargetTicks) {
@@ -147,6 +160,7 @@ void RobotDriver::letTurn(const double angle) {
 
     updateOdometry();
     getDistance();
+    updateTargetData();
 
     currentTicks = (abs(leftTicks - startLeft) + abs(rightTicks - startRight)) / 2;
     error = targetTicks - currentTicks;
@@ -161,15 +175,15 @@ void RobotDriver::letTurn(const double angle) {
     derivative = (error - lastError) / dt;
 
     outputSpeed = (int)(Kp * error + Kd * derivative);
-    outputSpeed = constrain(outputSpeed, 80, 180);
+    outputSpeed = constrain(outputSpeed, 50, 140);
 
     double syncError = abs(leftTicks - startLeft) - abs(rightTicks - startRight);
 
     int leftSpeed = outputSpeed - (int)(Kp_sync * syncError);
     int rightSpeed = outputSpeed + (int)(Kp_sync * syncError);
 
-    leftSpeed = constrain(leftSpeed, 80, 180);
-    rightSpeed = constrain(rightSpeed, 80, 180);
+    leftSpeed = constrain(leftSpeed, 50, 140);
+    rightSpeed = constrain(rightSpeed, 50, 140);
 
     if (angle > 0) {
       setMotors(-leftSpeed, rightSpeed);

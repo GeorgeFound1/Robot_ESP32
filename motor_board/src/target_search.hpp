@@ -27,7 +27,12 @@ extern volatile bool newReadingAvailable;
 extern volatile unsigned long echoStartTime;
 
 const float TARGET_SLOW_DISTACNE = 50.0;
-const float TARGET_STOP_DISTANCE = 25.0;
+const float TARGET_STOP_DISTANCE = 14.0;
+const float TARGET_SAFE_ANGLE = 15.0;
+const float TURN_CORRECTION_FACTOR = 0.4;
+const float TARGET_MAX_TURN_DISTANCE = 70.0;
+const unsigned long ANGLE_DEBOUNCE_MS = 200;
+const unsigned long CAMERA_SETTLE_TIMEOUT = 700;
 
 extern TargetData currentTarget;
 extern unsigned long lastTargetUpdateTime;
@@ -36,5 +41,6 @@ void updateTargetData();
 void resetSonarBuffer();
 
 void calculateCoords(const TargetData& target, const RobotDriver& myRobot, TargetCoords *coords);
+double normalizeAngle(double angle); 
 
 #endif

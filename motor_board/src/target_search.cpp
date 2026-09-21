@@ -131,7 +131,7 @@ bool isDrivingToWall = (search == DRIVE_TO_WALL_1 ||
     {
     case DRIVE_TO_WALL_1:
         Serial.println("[SEARCH] -> DRIVE_TO_WALL_1: старт goStraightBlocking");
-        goStraightBlocking(wallSearchDistance);
+        startGoStraight(wallSearchDistance);
         Serial.println("[SEARCH] -> DRIVE_TO_WALL_1 завершён, переход в TURN_90_AFTER_WALL_1");
         search = TURN_90_AFTER_WALL_1;
         break;
@@ -145,7 +145,7 @@ bool isDrivingToWall = (search == DRIVE_TO_WALL_1 ||
 
     case DRIVE_TO_WALL_2:
         Serial.println("[SEARCH] -> DRIVE_TO_WALL_2: старт goStraightBlocking");
-        goStraightBlocking(wallSearchDistance);
+        startGoStraight(wallSearchDistance);
         Serial.println("[SEARCH] -> DRIVE_TO_WALL_2 завершён, переход в TURN_180_AT_CORNER");
         search = TURN_180_AT_CORNER;
         break;
@@ -159,13 +159,13 @@ bool isDrivingToWall = (search == DRIVE_TO_WALL_1 ||
 
     case SNAKE_MOVE_SIDEWARD:
         Serial.println("[SEARCH] -> SNAKE_MOVE_SIDEWARD");
-        goStraightBlocking(snakeStepDistance);
+        startGoStraight(snakeStepDistance);
         search = SNAKE_ROTATE_2;
         break;
 
     case SNAKE_MOVE_FORWARD:
         Serial.println("[SEARCH] -> SNAKE_MOVE_FORWARD");
-        goStraightBlocking(wallSearchDistance);
+        startGoStraight(wallSearchDistance);
         search = SNAKE_ROTATE_1;
         break;
 
@@ -196,4 +196,10 @@ void updateTargetData() {
     if (millis() - lastTargetUpdateTime > 500) {
         currentTarget.detected = false;
     }
+}
+
+double normalizeAngle(double angle) {
+    while (angle > 180.0) angle -= 360.0;
+    while (angle < -180.0) angle += 360.0;
+    return angle;
 }
